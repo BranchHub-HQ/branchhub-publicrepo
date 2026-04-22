@@ -1,6 +1,6 @@
-## Title
+## Action Correlation
 
-Action→request correlation via per-action time windows and timestamps
+Title: Action→request correlation via per-action time windows and timestamps
 
 ## What Was Decided
 
