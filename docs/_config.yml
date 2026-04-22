@@ -3,8 +3,13 @@
 # description: "AI Generated Docs"
 # markdown: kramdown
 
+# title: Example Repo
+# description: Cayman is a clean, responsive theme for GitHub Pages.
+# show_downloads: false
+# google_analytics:
+# theme: jekyll-theme-cayman
+
 title: Example Repo
-description: Cayman is a clean, responsive theme for GitHub Pages.
-show_downloads: false
+description: Minimal is a theme for GitHub Pages.
 google_analytics:
-theme: jekyll-theme-cayman
+theme: jekyll-theme-minimal
