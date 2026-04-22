@@ -1,6 +1,6 @@
-## Testing Stack
+## Title
 
-Title: Testing stack: ZAP for breadth + Playwright for depth and exploit validation
+Testing stack: ZAP for breadth + Playwright for depth and exploit validation
 
 ## What Was Decided
 
