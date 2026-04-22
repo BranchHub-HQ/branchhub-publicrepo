@@ -10,4 +10,4 @@ The Recorder MVP captures a real user flow in a headed Playwright browser and em
 
 ---
 
-*Generated: 2026-04-22T23:23:14.695Z*
+*Generated: 2026-04-22T23:25:41.940Z*
