@@ -1,4 +1,4 @@
 ## BranchHub Docs
 
-- [AI Generated Documentation](/branchhub/)
+- [AI Generated Documentation](./branchhub/)
 
