@@ -1,7 +1,7 @@
 theme: minima
 title: Example Repo
 description: "Minima is a clean, responsive theme for GitHub Pages."
-remote_theme: jekyll/minima
+# remote_theme: jekyll/minima
 
 # title: Example Repo
 # description: Cayman is a clean, responsive theme for GitHub Pages.
