@@ -1,3 +1,5 @@
+# Overview
+
 ## Summary
 
 The conversation is about building a Playwright-driven penetration-testing engine that records real user flows and replays them to inject payloads and validate execution. You and the assistant converged on a Recorder v0 that emits three artifacts (storageState.json, flow.plan.json, flow.net.json) and uses a simple time-window correlation to map network requests to UI actions. For an MVP the recorder should capture four atomic, security-relevant action types (click, fill, select, navigation) and a compact HAR++-style network log; a Chrome extension is a good UX for recording but should upload artifacts to a Playwright backend for deterministic replay, injection and detection. The assistant also clarified exact meanings for click/fill/select/navigation and explained how a Chrome extension can implement action capture (content scripts, background/service worker, webRequest/devtools, pushState override) while leaving attack execution to Playwright workers.
