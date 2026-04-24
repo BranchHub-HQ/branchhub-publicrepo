@@ -1,14 +1,14 @@
 # Playwright for Pen Testing
 
 > 📝 Auto-generated documentation from BranchHub AI  
-> 🕒 Generated: 2026-04-22T21:56:14.264Z
+> 🕒 Generated: 2026-04-24T11:47:22.326Z
 
 ## 📖 Contents
 
 - [Overview](overview.md) - High-level summary
 - [Context](context.md) - Background and requirements
-- [Architecture Decisions](decisions/README.md) - 6 key technical decisions
-- [System Modules](modules/README.md) - 1 implementation components
+- [Architecture Decisions](decisions/README.md) - 8 key technical decisions
+- [System Modules](modules/README.md) - 6 implementation components
 
 ---
 
