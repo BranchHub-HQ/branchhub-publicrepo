@@ -1,28 +1,25 @@
 # System Modules
 
-> 🧩 6 modules identified
+> 🧩 5 modules identified
 
 ## Modules
 
-- [Recorder Architecture and Interaction Capture](001-recorder-architecture.md) - Module Overview
+- [Recorder Architecture and Capture Scope](001-recorder-architecture.md) - Module Overview
 
-The **Recorder Architecture and Interaction Capture** module defines how the MVP re
-- [Flow Artifact Schema and Session State](002-artifact-schema.md) - Module Overview
+The Recorder Architecture and Capture Scope module defines how user interactions ar
+- [Flow Artifact Schema and Correlation Model](002-artifact-schema.md) - Module Overview
 
-The **Flow Artifact Schema and Session State** module defines the artifact contract
-- [Action to Request Correlation Design](003-correlation-design.md) - Module Overview
+The **Flow Artifact Schema and Correlation Model** defines the recorder output cont
+- [Replay Injection and Validation Engine](003-replay-engine.md) - Module Overview
 
-The **Action to Request Correlation** module links recorded UI actions to the netwo
-- [Replay Injection and Validation Engine](004-replay-engine.md) - Module Overview
+The **Replay Injection and Validation Engine** executes previously recorded user fl
+- [Scanning and Toolchain Integration](004-toolchain-integration.md) - Module Overview
 
-The **Replay Injection and Validation Engine** is the execution core of the MVP sec
-- [Scanning Strategy and Toolchain Integration](005-toolchain-integration.md) - Module Overview
+This module defines how the security engine integrates **Playwright** and **ZAP** i
+- [Backend Worker Platform and Service Implementation](005-worker-platform.md) - Module Overview
 
-This module defines how the MVP security engine combines **ZAP for discovery breadt
-- [MVP Scope and Delivery Boundaries](006-mvp-scope.md) - Module Overview
-
-This module defines the **delivery boundary for the MVP**: prove the core engine ca
+The backend worker platform executes the MVP security engine: it accepts recorded f
 
 ---
 
-*Generated: 2026-04-24T11:47:22.326Z*
+*Generated: 2026-04-25T08:48:03.286Z*
