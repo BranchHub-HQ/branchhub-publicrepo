@@ -1,179 +1,149 @@
 ## Module Overview
 
-The **Recorder Architecture and Interaction Capture** module defines how the MVP recorder observes a real user session and emits the minimal artifacts needed for deterministic replay, payload injection, and exploit validation.
+The Recorder Architecture and Capture Scope module defines how user interactions are captured, normalized, and exported for later deterministic replay and security testing. In MVP scope, the recorder is a **headed Playwright tool in Node.js** that emits three artifacts:
 
-Scope for Recorder v0 is intentionally narrow:
+- `storageState.json` — authenticated browser/session state
+- `flow.plan.json` — ordered user actions
+- `flow.net.json` — captured network activity
 
-- Run as a **headed Playwright recorder in Node.js**
-- Capture only four action types:
-  - `click`
-  - `fill`
-  - `select`
-  - `navigation`
-- Persist three artifacts:
-  - `storageState.json`
-  - `flow.plan.json`
-  - `flow.net.json`
+Recorder v0 intentionally captures only the smallest useful action set:
 
-This module is focused on **security-relevant interaction capture**, not full UX telemetry. It ignores low-value noise such as scrolling, hover, and animation state.
+- `click`
+- `fill`
+- `select`
+- `navigation`
+
+For `fill`, only the **final value on blur/change** is recorded, not every keystroke. This keeps recordings compact, lowers privacy exposure, and improves downstream action→request correlation.
 
 ## Architecture
 
 ### Component Architecture
 
-The recorder consists of three main capture layers:
-
-- **Browser/session capture**
-  - Stores authenticated browser state via Playwright `storageState`
-- **UI action capture**
-  - Records a timeline of user interactions with selectors, values, timestamps, and frame context
-- **Network capture**
-  - Records requests/responses and correlates them to actions using timestamp windows
-
-### Key Interactions
-
-- User performs actions in a headed browser
-- Recorder assigns each action an `actionId` and `startTs`
-- Network events are collected during the session
-- When the next action starts, the previous action window closes
-- Requests whose timestamps fall inside that window are attached to the prior action
+The recorder sits at the front of the broader record/replay/inject pipeline. Its responsibility is to **observe and serialize**, not to execute attacks. Replay, payload injection, and exploit validation belong to backend Playwright workers.
 
 ```mermaid
 graph TD
-    U[User in Headed Browser] --> P[Playwright Recorder]
-    P --> A[Action Capture Layer]
-    P --> N[Network Capture Layer]
-    P --> S[Session Capture Layer]
+    U[User in headed browser] --> R[Recorder]
+    R --> A[Action Capture Layer]
+    R --> N[Network Capture Layer]
+    R --> S[Session Capture Layer]
 
     A --> FP[flow.plan.json]
     N --> FN[flow.net.json]
     S --> SS[storageState.json]
 
-    A --> C[Action Window Correlator]
-    N --> C
-    C --> FN
+    FP --> UP[Upload/API]
+    FN --> UP
+    SS --> UP
+
+    UP --> W[Playwright Replay/Injection Worker]
+    W --> V[Validation/Detection Engine]
 ```
 
-### Flow Sequence
+### Key Interactions
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant Browser
-    participant Recorder
-    participant Correlator
-    User->>Browser: click/fill/select/navigate
-    Browser->>Recorder: action event + timestamp
-    Browser->>Recorder: request/response events
-    Recorder->>Correlator: actionId,startTs
-    Correlator->>Correlator: close previous window on next action
-    Correlator->>Recorder: assign requests to actionId
-    Recorder->>Recorder: write artifacts
-```
+- Action capture records atomic UI events with timestamps, selectors, and frame context.
+- Network capture records request/response metadata in a compact HAR++-style log.
+- Session capture saves cookies/local storage state via Playwright `storageState`.
+- Correlation links requests to actions using timestamp windows.
 
 ## Implementation Details
 
 ### Technical Approach
 
-Recorder v0 captures only actions that:
+Recorder v0 uses a minimal event model:
 
-- change input
-- trigger network
-- change application state
+| Action | Capture rule | Stored fields |
+|--------|--------------|---------------|
+| Click | DOM click on actionable element | selector, timestamp, frame, state |
+| Fill | `blur`/`change` on input/textarea | selector, final value, timestamp |
+| Select | `change` on `<select>` | selector, selected value(s), timestamp |
+| Navigation | full load or SPA route change | URL, timestamp |
 
-For fills, capture the **final value on blur/change**, not every keystroke. For each action, store:
+Selectors should include **primary + fallback locators**, preferring stable attributes such as `data-testid`, ARIA labels, or role-based targeting, with CSS fallback.
 
-- `actionId`
-- `type`
-- `ts`
-- selector set:
-  - primary locator
-  - fallback locator(s)
-- `frame` context
-- optional `value` for `fill`/`select`
-- `url` for `navigation`
+### Example Event Capture
 
-### Example Action Records
+```javascript
+document.addEventListener('click', event => {
+  const el = event.target;
+  const selector = getUniqueSelector(el);
+  chrome.runtime.sendMessage({
+    type: 'click',
+    selector,
+    timestamp: Date.now()
+  });
+});
+```
 
-```json
-{
-  "actionId": "a1",
-  "type": "click",
-  "ts": 1710840000000,
-  "selector": {
-    "primary": { "kind": "testId", "value": "login-btn" }
+```javascript
+document.addEventListener('blur', event => {
+  const el = event.target;
+  if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+    const selector = getUniqueSelector(el);
+    chrome.runtime.sendMessage({
+      type: 'fill',
+      selector,
+      value: el.value,
+      timestamp: Date.now()
+    });
   }
-}
+}, true);
 ```
 
-```json
-{
-  "actionId": "a2",
-  "type": "fill",
-  "ts": 1710840000500,
-  "selector": {
-    "primary": { "kind": "ariaLabel", "value": "Email" }
-  },
-  "value": "user@example.com"
-}
+```javascript
+(function() {
+  const pushState = history.pushState;
+  history.pushState = function(...args) {
+    pushState.apply(this, args);
+    chrome.runtime.sendMessage({
+      type: 'navigation',
+      url: location.href,
+      timestamp: Date.now()
+    });
+  };
+})();
 ```
 
-```json
-{
-  "actionId": "a4",
-  "type": "navigation",
-  "ts": 1710840002000,
-  "url": "https://example.com/dashboard"
-}
-```
+### Correlation Algorithm
 
-### Artifact Contract
+Requests are mapped to actions using **per-action time windows**:
 
-| Artifact | Purpose |
-|----------|---------|
-| `storageState.json` | Auth/session state for replay |
-| `flow.plan.json` | Ordered action timeline and locators |
-| `flow.net.json` | HAR++-style network log with action mapping |
+- each action gets `actionId` and `startTs`
+- when the next action begins, the previous action closes with `endTs = nextAction.startTs - 1`
+- requests are assigned to the action whose window contains the request timestamp
+- navigations are represented as explicit actions
 
 ## Related Decisions
 
-This design follows these decisions:
+This module is driven by these decisions:
 
-- **MVP recorder as headed Playwright (Node.js)**  
-  Chosen for fidelity, session capture, and alignment with replay workers.
+- **MVP recorder: headed Playwright (Node.js) emitting three artifacts**  
+  Chosen for fidelity and alignment with replay workers.
 - **Recorder v0 captures only click/fill/select/navigation**  
-  Reduces noise while preserving the core attack surface.
-- **Action→request correlation via time windows**  
-  Simple and deterministic for MVP: `startTs` opens a window, next action closes it.
-- **Node.js/TypeScript aligned with Playwright**  
-  Enables shared types and simpler integration across recorder and execution.
+  Chosen to minimize noise while preserving security-relevant behavior.
+- **Action→request correlation via per-action time windows**  
+  Chosen as the simplest deterministic MVP mapping strategy.
+- **Engine-first MVP; no full UI yet**  
+  Keeps focus on reliable artifacts and replay correctness before product UX.
 
 ## Key Technical Details
 
-### Algorithms and Data Structures
+### Data Structures
 
-- **Action timeline**
-  - append-only ordered list of actions
-- **Correlation model**
-  - each action has:
-    - `actionId`
-    - `startTs`
-    - computed `endTs`
-- **Request assignment**
-  - assign request to action where `startTs <= reqTs <= endTs`
+- `flow.plan.json`: ordered list of actions with `actionId`, `type`, `locator`, `value`, `frame`, `startTs`, `endTs`
+- `flow.net.json`: request/response events with `url`, `method`, `headers`, `postData` (optional/truncated), `status`, `contentType`, timestamps, and optional `reqSignature`
+- `storageState.json`: Playwright session state
 
 ### Integration Points
 
-- Playwright browser/context/page events
-- Downstream replay/injection engine consumes:
-  - `storageState.json`
-  - `flow.plan.json`
-  - `flow.net.json`
+- Playwright browser/context APIs
+- DOM event listeners for action capture
+- optional extension-based capture later for improved UX
+- backend upload endpoint for artifact ingestion
 
 ### Dependencies
 
-- **Node.js**
-- **Playwright**
-- JSON schemas for action and network artifact validation
-
-This module provides the recorder-side foundation for later replay, mutation, and vulnerability validation in the Playwright execution layer.
+- Node.js / TypeScript
+- Playwright
+- JSON schema validation for artifact contracts
